@@ -451,6 +451,11 @@
         link.click();
       }
     }
+
+    // PWA Service Worker 登録処理
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
   </script>
 </body>
 </html>
