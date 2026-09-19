@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ARキャラカメラ</title>
+  
+  <!-- PWA設定 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ARカメラ">
+  <link rel="apple-touch-icon" href="mellow_reel_duo.png">
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -28,7 +37,6 @@
       height: 100%;
       object-fit: cover;
     }
-    /* インカメラ時の鏡像反転 */
     video.mirror {
       transform: scaleX(-1);
     }
@@ -245,11 +253,10 @@
     let currentDataUrl = '';
     let isSignSelected = false;
     let currentStream = null;
-    let useFacingMode = "environment"; // デフォルトは外カメラ
+    let useFacingMode = "environment";
 
     let state = { x: 0, y: 0, scale: 1, lastX: 0, lastY: 0, initialDist: 0, initialScale: 1 };
 
-    // 1. カメラ起動
     function startCamera() {
       if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
@@ -267,7 +274,6 @@
           video.classList.remove('mirror');
         }
       }).catch(err => {
-        // exact指定なしでフォールバック
         navigator.mediaDevices.getUserMedia({ video: true, audio: false })
           .then(stream => {
             currentStream = stream;
@@ -278,7 +284,6 @@
 
     startCamera();
 
-    // カメラ切り替え
     function toggleCamera() {
       useFacingMode = (useFacingMode === "environment") ? "user" : "environment";
       startCamera();
@@ -344,18 +349,16 @@
       resetCharPos();
     }
 
-    // 4. 撮影処理
     function takePhoto() {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
 
-      // インカメラ時は写真描画も反転させて実物通りにする
       if (useFacingMode === "user") {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を戻す
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
       } else {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       }
