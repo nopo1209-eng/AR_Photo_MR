@@ -47,17 +47,17 @@
       display: block;
     }
 
-    /* 看板上のテキスト表示（黒看板内に白文字） */
+    /* 看板上のテキスト表示（黒看板内にぴったり収まるよう下へ移動） */
     #sign-text-overlay {
       display: none;
       position: absolute;
-      top: 52%;
-      left: 28%;
-      width: 44%;
-      height: 35%;
+      top: 58%;
+      left: 24%;
+      width: 52%;
+      height: 28%;
       color: #ffffff;
       font-weight: bold;
-      font-size: 14px;
+      font-size: 13px;
       line-height: 1.2;
       text-align: center;
       word-break: break-all;
@@ -323,18 +323,18 @@
         // キャラ画像を描画
         ctx.drawImage(charImg, x, y, w, h);
 
-        // 看板テキストを描画（白文字）
+        // 看板テキストを描画（白文字・黒看板の位置へ）
         if (isSignSelected && signInput.value) {
           ctx.save();
-          const fontSize = 15 * scaleX * state.scale;
+          const fontSize = 14 * scaleX * state.scale;
           ctx.font = `bold ${fontSize}px sans-serif`;
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // 看板の中央位置へ配置
+          // 看板の黒い枠の中央位置（50%, 72%）
           const textX = x + (w * 0.50);
-          const textY = y + (h * 0.65);
+          const textY = y + (h * 0.72);
 
           ctx.fillText(signInput.value, textX, textY);
           ctx.restore();
