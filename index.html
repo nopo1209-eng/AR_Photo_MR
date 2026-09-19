@@ -47,19 +47,18 @@
       display: block;
     }
 
-    /* 看板上のテキスト表示 */
+    /* 看板上のテキスト表示（黒看板内に白文字） */
     #sign-text-overlay {
       display: none;
       position: absolute;
-      /* 看板の白枠領域（位置の調整値） */
-      top: 25%;
-      left: 18%;
-      width: 64%;
-      height: 48%;
-      color: #222;
+      top: 52%;
+      left: 28%;
+      width: 44%;
+      height: 35%;
+      color: #ffffff;
       font-weight: bold;
       font-size: 14px;
-      line-height: 1.3;
+      line-height: 1.2;
       text-align: center;
       word-break: break-all;
       white-space: pre-wrap;
@@ -186,10 +185,10 @@
     </div>
     <div class="char-select">
       <img src="mellow_reel_duo.png" class="active" onclick="selectChar(this, 'mellow_reel_duo.png')">
+      <img src="mellow_standing.png" onclick="selectChar(this, 'mellow_standing.png')">
       <img src="mellow_upside_down.png" onclick="selectChar(this, 'mellow_upside_down.png')">
       <img src="reel_peeking.png" onclick="selectChar(this, 'reel_peeking.png')">
       <img src="reel_sign.png" onclick="selectChar(this, 'reel_sign.png')">
-      <img src="mellow_standing.png" onclick="selectChar(this, 'mellow_standing.png')">
     </div>
     <button class="btn-shutter" onclick="takePhoto()">📷 写真を撮る</button>
   </div>
@@ -282,7 +281,7 @@
       el.classList.add('active');
       overlayChar.src = filename;
 
-      // 看板画像の判定
+      // 「reel_sign.png」の判定
       isSignSelected = filename.includes('reel_sign.png');
       if (isSignSelected) {
         textInputContainer.style.display = 'block';
@@ -324,18 +323,18 @@
         // キャラ画像を描画
         ctx.drawImage(charImg, x, y, w, h);
 
-        // 看板テキストを描画
+        // 看板テキストを描画（白文字）
         if (isSignSelected && signInput.value) {
           ctx.save();
-          const fontSize = 16 * scaleX * state.scale;
+          const fontSize = 15 * scaleX * state.scale;
           ctx.font = `bold ${fontSize}px sans-serif`;
-          ctx.fillStyle = '#222222';
+          ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // 看板の中心座標（位置調整値）
+          // 看板の中央位置へ配置
           const textX = x + (w * 0.50);
-          const textY = y + (h * 0.48);
+          const textY = y + (h * 0.65);
 
           ctx.fillText(signInput.value, textX, textY);
           ctx.restore();
