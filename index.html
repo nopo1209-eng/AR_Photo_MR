@@ -289,6 +289,7 @@
       resetCharPos();
     }
 
+    // 4. 撮影処理（Canvas自動複数行描画ロジック追加）
     function takePhoto() {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth || 1280;
@@ -316,21 +317,51 @@
 
         if (isSignSelected && signInput.value) {
           ctx.save();
-          const textLength = signInput.value.length;
+          
+          const maxBoardWidth = w * 0.44; // 看板の有効横幅
           let baseSize = 13;
-          if (textLength > 8) baseSize = 10;
-          if (textLength > 12) baseSize = 8;
-
-          const fontSize = baseSize * scaleX * state.scale;
+          let fontSize = baseSize * scaleX * state.scale;
           ctx.font = `bold ${fontSize}px sans-serif`;
+
+          // 文字列を自動折り返しして行の配列を作成
+          const text = signInput.value;
+          const words = text.split('');
+          let lines = [];
+          let currentLine = '';
+
+          for (let i = 0; i < words.length; i++) {
+            let testLine = currentLine + words[i];
+            let metrics = ctx.measureText(testLine);
+            if (metrics.width > maxBoardWidth && i > 0) {
+              lines.push(currentLine);
+              currentLine = words[i];
+            } else {
+              currentLine = testLine;
+            }
+          }
+          lines.push(currentLine);
+
+          // 行数が多い場合はフォントサイズを自動縮小
+          if (lines.length > 2) {
+            baseSize = 10;
+            fontSize = baseSize * scaleX * state.scale;
+            ctx.font = `bold ${fontSize}px sans-serif`;
+          }
+
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          const textX = x + (w * 0.58);
-          const textY = y + (h * 0.75);
+          const textX = x + (w * 0.60);
+          const textY = y + (h * 0.74);
+          const lineHeight = fontSize * 1.25;
+          const startY = textY - ((lines.length - 1) * lineHeight / 2);
 
-          ctx.fillText(signInput.value, textX, textY);
+          // 各行を描画
+          lines.forEach((line, index) => {
+            ctx.fillText(line, textX, startY + (index * lineHeight));
+          });
+
           ctx.restore();
         }
 
