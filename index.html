@@ -2,46 +2,59 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ARキャラカメラ</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: sans-serif; background: #000; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    html, body {
+      width: 100%;
+      height: 100dvh; /* スマホのアドレスバー変動に対応 */
+      overflow: hidden;
+      background: #000;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
 
-    /* カメラ映像エリア（画面の大部分） */
+    /* カメラ表示エリア */
     #stage {
       position: relative;
       flex: 1;
-      width: 100vw;
+      width: 100%;
+      overflow: hidden;
       background: #111;
       display: flex;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
     }
-    video { width: 100%; height: 100%; object-fit: cover; }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
 
-    /* キャラ画像オーバーレイ */
+    /* キャラ画像（ドラッグ＆ピンチ可能） */
     #overlay-char {
       position: absolute;
-      max-width: 65%;
-      max-height: 65%;
+      width: 200px;
       touch-action: none;
-      pointer-events: auto;
+      cursor: move;
+      user-select: none;
     }
 
-    /* 操作エリア（画面下部に固定） */
+    /* 操作エリア */
     #controls {
-      height: 140px;
-      background: #1a1a1a;
+      height: 130px;
+      background: #181818;
       display: flex;
       flex-direction: column;
-      justify-content: space-evenly;
+      justify-content: space-around;
       align-items: center;
-      padding: 10px;
+      padding: 8px;
+      z-index: 10;
     }
 
-    /* キャラサムネイル一覧 */
+    /* サムネイル */
     .char-select {
       display: flex;
       gap: 10px;
@@ -51,7 +64,7 @@
       padding: 2px 0;
     }
     .char-select img {
-      height: 45px;
+      height: 40px;
       border: 2px solid transparent;
       border-radius: 8px;
       background: #333;
@@ -61,47 +74,42 @@
 
     /* 撮影ボタン */
     .btn-shutter {
-      padding: 10px 35px;
+      padding: 8px 30px;
       font-size: 16px;
       font-weight: bold;
       background: linear-gradient(45deg, #ff007f, #7f00ff);
       color: white;
       border: none;
       border-radius: 25px;
-      cursor: pointer;
       box-shadow: 0 4px 10px rgba(255, 0, 127, 0.4);
     }
 
-    /* プレビューモーダル（撮影後に表示） */
+    /* モーダル */
     #modal {
       display: none;
       position: fixed;
       top: 0; left: 0;
-      width: 100vw; height: 100vh;
+      width: 100%; height: 100dvh;
       background: rgba(0,0,0,0.9);
       z-index: 999;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      padding: 20px;
+      padding: 15px;
     }
     #preview-img {
       max-width: 90%;
-      max-height: 70vh;
+      max-height: 70dvh;
       border-radius: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 15px;
     }
-    .modal-btns {
-      display: flex;
-      gap: 15px;
-    }
+    .modal-btns { display: flex; gap: 15px; }
     .btn-action {
       padding: 10px 20px;
       font-size: 15px;
       font-weight: bold;
       border-radius: 20px;
       border: none;
-      cursor: pointer;
     }
     .btn-save { background: #00ffcc; color: #000; }
     .btn-retry { background: #555; color: #fff; }
@@ -111,13 +119,11 @@
 </head>
 <body>
 
-  <!-- カメラステージ -->
   <div id="stage">
     <video id="camera" autoplay playsinline muted></video>
     <img id="overlay-char" src="mellow_reel_duo.png" alt="character">
   </div>
 
-  <!-- 下部操作エリア -->
   <div id="controls">
     <div class="char-select">
       <img src="mellow_reel_duo.png" class="active" onclick="selectChar(this, 'mellow_reel_duo.png')">
@@ -126,16 +132,14 @@
       <img src="reel_sign.png" onclick="selectChar(this, 'reel_sign.png')">
       <img src="mellow_standing.png" onclick="selectChar(this, 'mellow_standing.png')">
     </div>
-
     <button class="btn-shutter" onclick="takePhoto()">📷 写真を撮る</button>
   </div>
 
-  <!-- 撮影後の確認画面 -->
   <div id="modal">
     <img id="preview-img" src="" alt="preview">
     <div class="modal-btns">
       <button class="btn-action btn-retry" onclick="closeModal()">撮り直す</button>
-      <button class="btn-action btn-save" onclick="savePhoto()">画像を保存 / シェア</button>
+      <button class="btn-action btn-save" onclick="savePhoto()">保存 / シェア</button>
     </div>
   </div>
 
@@ -150,34 +154,76 @@
 
     let currentDataUrl = '';
 
+    // トランスフォーム管理（移動・拡大）
+    let state = { x: 0, y: 0, scale: 1, lastX: 0, lastY: 0, initialDist: 0, initialScale: 1 };
+
     // 1. カメラ起動
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: { exact: "environment" } },
       audio: false
-    }).then(stream => {
-      video.srcObject = stream;
-    }).catch(err => {
-      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        .then(stream => video.srcObject = stream);
+    }).then(stream => { video.srcObject = stream; })
+      .catch(() => {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          .then(stream => video.srcObject = stream);
+      });
+
+    // 初期位置リセット
+    function resetCharPos() {
+      state.x = 0; state.y = 0; state.scale = 1;
+      updateTransform();
+    }
+
+    function updateTransform() {
+      overlayChar.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+    }
+
+    // 2. タッチ操作（ドラッグ ＆ ピンチズーム）
+    overlayChar.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        state.lastX = e.touches[0].clientX - state.x;
+        state.lastY = e.touches[0].clientY - state.y;
+      } else if (e.touches.length === 2) {
+        state.initialDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        state.initialScale = state.scale;
+      }
     });
 
-    // 2. キャラ変更
+    overlayChar.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        state.x = e.touches[0].clientX - state.lastX;
+        state.y = e.touches[0].clientY - state.lastY;
+        updateTransform();
+      } else if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        state.scale = Math.max(0.3, Math.min(3, state.initialScale * (dist / state.initialDist)));
+        updateTransform();
+      }
+    });
+
+    // 3. キャラ変更
     function selectChar(el, filename) {
       document.querySelectorAll('.char-select img').forEach(img => img.classList.remove('active'));
       el.classList.add('active');
       overlayChar.src = filename;
+      resetCharPos();
     }
 
-    // 3. 撮影処理
+    // 4. 撮影処理
     function takePhoto() {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
 
-      // カメラ映像描画
+      // カメラ描画
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // キャラ描画
       const charImg = new Image();
       charImg.src = overlayChar.src;
       charImg.onload = () => {
@@ -197,23 +243,18 @@
 
         currentDataUrl = canvas.toDataURL('image/png');
         previewImg.src = currentDataUrl;
-        modal.style.display = 'flex'; // プレビュー表示
+        modal.style.display = 'flex';
       };
     }
 
-    function closeModal() {
-      modal.style.display = 'none';
-    }
+    function closeModal() { modal.style.display = 'none'; }
 
-    // 4. 保存 ＆ Web Share API（スマホ標準のシェア画面）
+    // 5. 保存 ＆ シェア
     async function savePhoto() {
       if (!currentDataUrl) return;
-
-      // DataURLをBlobに変換
       const blob = await (await fetch(currentDataUrl)).blob();
       const file = new File([blob], `ar_photo_${Date.now()}.png`, { type: 'image/png' });
 
-      // スマホのWeb Share APIが使える場合（写真保存やSNS直接送信）
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
@@ -221,11 +262,8 @@
             title: 'ARキャラフォト',
             text: '#村椿朗読会 #メロウとリール'
           });
-        } catch (e) {
-          console.log('Share canceled or failed', e);
-        }
+        } catch (e) {}
       } else {
-        // PC等の場合はそのままダウンロード
         const link = document.createElement('a');
         link.download = file.name;
         link.href = currentDataUrl;
