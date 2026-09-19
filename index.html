@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ARキャラカメラ</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #000; overflow: hidden; height: 100vh; }
+
+    /* カメラ映像とキャラ表示エリア */
+    #stage {
+      position: relative;
+      width: 100vw;
+      height: 80vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #111;
+    }
+    video { width: 100%; height: 100%; object-fit: cover; }
+
+    /* オーバーレイ表示用のキャラ画像 */
+    #overlay-char {
+      position: absolute;
+      max-width: 60%;
+      max-height: 60%;
+      touch-action: none; /* タッチ操作用 */
+      pointer-events: auto;
+    }
+
+    /* UIコントロールエリア */
+    #controls {
+      height: 20vh;
+      background: #222;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      align-items: center;
+      padding: 10px;
+    }
+
+    .char-select {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      width: 100%;
+      padding: 5px 0;
+    }
+    .char-select img {
+      height: 50px;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      background: #333;
+      cursor: pointer;
+    }
+    .char-select img.active { border-color: #00ffcc; }
+
+    .btn-shutter {
+      padding: 12px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      background: #ff007f;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+    }
+
+    /* 撮影結果の非表示キャンバス */
+    canvas { display: none; }
+  </style>
+</head>
+<body>
+
+  <div id="stage">
+    <video id="camera" autoplay playsinline muted></video>
+    <img id="overlay-char" src="mellow_reel_duo.png" alt="character">
+  </div>
+
+  <div id="controls">
+    <!-- キャラ切り替えサムネイル -->
+    <div class="char-select">
+      <img src="mellow_reel_duo.png" class="active" onclick="selectChar(this, 'mellow_reel_duo.png')">
+      <img src="mellow_upside_down.png" onclick="selectChar(this, 'mellow_upside_down.png')">
+      <img src="reel_peeking.png" onclick="selectChar(this, 'reel_peeking.png')">
+      <img src="reel_sign.png" onclick="selectChar(this, 'reel_sign.png')">
+      <img src="mellow_standing.png" onclick="selectChar(this, 'mellow_standing.png')">
+    </div>
+
+    <button class="btn-shutter" onclick="takePhoto()">写真を撮る</button>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const video = document.getElementById('camera');
+    const overlayChar = document.getElementById('overlay-char');
+    const canvas = document.getElementById('canvas');
+
+    // 1. リアカメラの起動
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" } },
+      audio: false
+    }).then(stream => {
+      video.srcObject = stream;
+    }).catch(err => {
+      // アウトカメラが取れない（PC等）場合はデフォルトカメラ
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => video.srcObject = stream);
+    });
+
+    // 2. キャラ切り替え
+    function selectChar(el, filename) {
+      document.querySelectorAll('.char-select img').forEach(img => img.classList.remove('active'));
+      el.classList.add('active');
+      overlayChar.src = filename;
+    }
+
+    // 3. 撮影 ＆ 合成 (Canvas描画)
+    function takePhoto() {
+      const ctx = canvas.getContext('2d');
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+
+      // カメラ映像を描画
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // キャラ画像を重ねて描画（位置やサイズを計算）
+      const charImg = new Image();
+      charImg.src = overlayChar.src;
+      charImg.onload = () => {
+        // 画面上の表示比率に合わせてCanvas上に配置
+        const stage = document.getElementById('stage');
+        const scaleX = canvas.width / stage.clientWidth;
+        const scaleY = canvas.height / stage.clientHeight;
+
+        const rect = overlayChar.getBoundingClientRect();
+        const stageRect = stage.getBoundingClientRect();
+
+        const x = (rect.left - stageRect.left) * scaleX;
+        const y = (rect.top - stageRect.top) * scaleY;
+        const w = rect.width * scaleX;
+        const h = rect.height * scaleY;
+
+        ctx.drawImage(charImg, x, y, w, h);
+
+        // 画像のダウンロード処理
+        const link = document.createElement('a');
+        link.download = `photo_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      };
+    }
+  </script>
+</body>
+</html>
