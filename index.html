@@ -47,12 +47,12 @@
       display: block;
     }
 
-    /* 看板上のテキスト表示（少し左・下へ絶妙微調整） */
+    /* 看板上のテキスト表示（思い切って左38%、下60%へ移動） */
     #sign-text-overlay {
       display: none;
       position: absolute;
       top: 60%;
-      left: 40%;
+      left: 38%;
       width: 44%;
       height: 28%;
       color: #ffffff;
@@ -327,9 +327,9 @@
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // ボードの微調整（0.64, 0.71）
-          const textX = x + (w * 0.64);
-          const textY = y + (h * 0.71);
+          // 写真合成時の位置（左58%、下75%）
+          const textX = x + (w * 0.58);
+          const textY = y + (h * 0.75);
 
           ctx.fillText(signInput.value, textX, textY);
           ctx.restore();
