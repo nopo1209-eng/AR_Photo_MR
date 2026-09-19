@@ -226,30 +226,40 @@
       resetCharPos();
     }
 
-    // 4. 撮影処理
+    // 4. 撮影処理（アスペクト比を完璧に維持して合成）
     function takePhoto() {
       const ctx = canvas.getContext('2d');
+      
+      // カメラの元解像度に合わせる
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
 
-      // カメラ描画
+      // 1. カメラ映像を描画
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const charImg = new Image();
       charImg.src = overlayChar.src;
       charImg.onload = () => {
         const stage = document.getElementById('stage');
+        
+        // 画面の表示サイズと Canvas 解像度の比率
         const scaleX = canvas.width / stage.clientWidth;
         const scaleY = canvas.height / stage.clientHeight;
 
+        // 画面上のキャラの位置と幅を取得
         const rect = overlayChar.getBoundingClientRect();
         const stageRect = stage.getBoundingClientRect();
 
+        // 描画位置（X, Y）
         const x = (rect.left - stageRect.left) * scaleX;
         const y = (rect.top - stageRect.top) * scaleY;
-        const w = rect.width * scaleX;
-        const h = rect.height * scaleY;
 
+        // 描画サイズ：表示されている横幅（w）を基準にし、高さ（h）は元画像の縦横比から正確に計算
+        const w = rect.width * scaleX;
+        const aspectRatio = charImg.naturalHeight / charImg.naturalWidth;
+        const h = w * aspectRatio;
+
+        // 2. キャラ画像を歪みなく合成
         ctx.drawImage(charImg, x, y, w, h);
 
         currentDataUrl = canvas.toDataURL('image/png');
