@@ -47,13 +47,13 @@
       display: block;
     }
 
-    /* 看板上のテキスト表示（黒ボードの完全中央に配置） */
+    /* 看板上のテキスト表示（黒ボードの真ん中に右寄せ調整） */
     #sign-text-overlay {
       display: none;
       position: absolute;
       top: 71%;
-      left: 25%;
-      width: 50%;
+      left: 28%;
+      width: 44%;
       height: 22%;
       color: #ffffff;
       font-weight: bold;
@@ -218,10 +218,8 @@
     let currentDataUrl = '';
     let isSignSelected = false;
 
-    // トランスフォーム管理（移動・拡大）
     let state = { x: 0, y: 0, scale: 1, lastX: 0, lastY: 0, initialDist: 0, initialScale: 1 };
 
-    // 1. カメラ起動
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: { exact: "environment" } },
       audio: false
@@ -240,12 +238,10 @@
       container.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
     }
 
-    // 看板テキストリアルタイム更新
     function updateSignText() {
       signTextOverlay.innerText = signInput.value;
     }
 
-    // 2. タッチ操作
     container.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         state.lastX = e.touches[0].clientX - state.x;
@@ -275,7 +271,6 @@
       }
     });
 
-    // 3. キャラ選択
     function selectChar(el, filename) {
       document.querySelectorAll('.char-select img').forEach(img => img.classList.remove('active'));
       el.classList.add('active');
@@ -294,7 +289,6 @@
       resetCharPos();
     }
 
-    // 4. 撮影処理（Canvas描画時の文字自動位置調整 ＆ 長文自動改行）
     function takePhoto() {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth || 1280;
@@ -320,10 +314,8 @@
 
         ctx.drawImage(charImg, x, y, w, h);
 
-        // 看板テキストを描画（長文対応・中央揃え）
         if (isSignSelected && signInput.value) {
           ctx.save();
-          // 文字数に応じてフォントサイズを自動調整
           const textLength = signInput.value.length;
           let baseSize = 13;
           if (textLength > 8) baseSize = 10;
@@ -335,8 +327,8 @@
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // ボードのドンピシャ中心座標
-          const textX = x + (w * 0.50);
+          // ほんの少し右へ（0.50 -> 0.52）
+          const textX = x + (w * 0.52);
           const textY = y + (h * 0.82);
 
           ctx.fillText(signInput.value, textX, textY);
@@ -351,7 +343,6 @@
 
     function closeModal() { modal.style.display = 'none'; }
 
-    // 5. 保存 ＆ シェア
     async function savePhoto() {
       if (!currentDataUrl) return;
       const blob = await (await fetch(currentDataUrl)).blob();
