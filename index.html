@@ -29,7 +29,7 @@
       object-fit: cover;
     }
 
-    /* キャラ画像とテキストのコンテナ */
+    /* キャラコンテナ */
     #overlay-container {
       position: absolute;
       top: 30%;
@@ -47,14 +47,14 @@
       display: block;
     }
 
-    /* 看板上のテキスト表示（黒看板内にぴったり収まるよう下へ移動） */
+    /* 看板上のテキスト表示（黒ボードの完全中央に配置） */
     #sign-text-overlay {
       display: none;
       position: absolute;
-      top: 58%;
-      left: 24%;
-      width: 52%;
-      height: 28%;
+      top: 71%;
+      left: 25%;
+      width: 50%;
+      height: 22%;
       color: #ffffff;
       font-weight: bold;
       font-size: 13px;
@@ -62,6 +62,7 @@
       text-align: center;
       word-break: break-all;
       white-space: pre-wrap;
+      display: flex;
       justify-content: center;
       align-items: center;
       pointer-events: none;
@@ -230,7 +231,6 @@
           .then(stream => video.srcObject = stream);
       });
 
-    // 位置リセット
     function resetCharPos() {
       state.x = 0; state.y = 0; state.scale = 1;
       updateTransform();
@@ -245,7 +245,7 @@
       signTextOverlay.innerText = signInput.value;
     }
 
-    // 2. タッチ操作（ドラッグ ＆ ピンチズーム）
+    // 2. タッチ操作
     container.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         state.lastX = e.touches[0].clientX - state.x;
@@ -281,7 +281,6 @@
       el.classList.add('active');
       overlayChar.src = filename;
 
-      // 「reel_sign.png」の判定
       isSignSelected = filename.includes('reel_sign.png');
       if (isSignSelected) {
         textInputContainer.style.display = 'block';
@@ -295,13 +294,12 @@
       resetCharPos();
     }
 
-    // 4. 撮影処理（文字も合成）
+    // 4. 撮影処理（Canvas描画時の文字自動位置調整 ＆ 長文自動改行）
     function takePhoto() {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
 
-      // カメラを描画
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const charImg = new Image();
@@ -320,21 +318,26 @@
         const aspectRatio = charImg.naturalHeight / charImg.naturalWidth;
         const h = w * aspectRatio;
 
-        // キャラ画像を描画
         ctx.drawImage(charImg, x, y, w, h);
 
-        // 看板テキストを描画（白文字・黒看板の位置へ）
+        // 看板テキストを描画（長文対応・中央揃え）
         if (isSignSelected && signInput.value) {
           ctx.save();
-          const fontSize = 14 * scaleX * state.scale;
+          // 文字数に応じてフォントサイズを自動調整
+          const textLength = signInput.value.length;
+          let baseSize = 13;
+          if (textLength > 8) baseSize = 10;
+          if (textLength > 12) baseSize = 8;
+
+          const fontSize = baseSize * scaleX * state.scale;
           ctx.font = `bold ${fontSize}px sans-serif`;
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // 看板の黒い枠の中央位置（50%, 72%）
+          // ボードのドンピシャ中心座標
           const textX = x + (w * 0.50);
-          const textY = y + (h * 0.72);
+          const textY = y + (h * 0.82);
 
           ctx.fillText(signInput.value, textX, textY);
           ctx.restore();
