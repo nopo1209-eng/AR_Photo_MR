@@ -47,7 +47,7 @@
       display: block;
     }
 
-    /* 看板上のテキスト表示 */
+    /* 看板上のテキスト表示（撮影前） */
     #sign-text-overlay {
       display: none;
       position: absolute;
@@ -289,7 +289,7 @@
       resetCharPos();
     }
 
-    // 4. 撮影処理（Canvas自動複数行描画ロジック追加）
+    // 4. 撮影処理（撮影前の画面表示と100%一致させるCanvas描画ロジック）
     function takePhoto() {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth || 1280;
@@ -317,49 +317,47 @@
 
         if (isSignSelected && signInput.value) {
           ctx.save();
-          
-          const maxBoardWidth = w * 0.44; // 看板の有効横幅
-          let baseSize = 13;
-          let fontSize = baseSize * scaleX * state.scale;
+
+          // 13pxベースでCSSと完全一致するスケール計算
+          const baseFontSize = 13;
+          const fontSize = baseFontSize * scaleX * state.scale;
           ctx.font = `bold ${fontSize}px sans-serif`;
-
-          // 文字列を自動折り返しして行の配列を作成
-          const text = signInput.value;
-          const words = text.split('');
-          let lines = [];
-          let currentLine = '';
-
-          for (let i = 0; i < words.length; i++) {
-            let testLine = currentLine + words[i];
-            let metrics = ctx.measureText(testLine);
-            if (metrics.width > maxBoardWidth && i > 0) {
-              lines.push(currentLine);
-              currentLine = words[i];
-            } else {
-              currentLine = testLine;
-            }
-          }
-          lines.push(currentLine);
-
-          // 行数が多い場合はフォントサイズを自動縮小
-          if (lines.length > 2) {
-            baseSize = 10;
-            fontSize = baseSize * scaleX * state.scale;
-            ctx.font = `bold ${fontSize}px sans-serif`;
-          }
-
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          const textX = x + (w * 0.60);
-          const textY = y + (h * 0.74);
-          const lineHeight = fontSize * 1.25;
-          const startY = textY - ((lines.length - 1) * lineHeight / 2);
+          // 看板黒枠の厳密な幅（44%）
+          const maxLineWidth = w * 0.44;
 
-          // 各行を描画
+          // 撮影前と全く同じ1文字ごとの自動折り返し処理
+          const text = signInput.value;
+          let lines = [];
+          let currentLine = '';
+
+          for (let i = 0; i < text.length; i++) {
+            let char = text[i];
+            let testLine = currentLine + char;
+            if (ctx.measureText(testLine).width > maxLineWidth && i > 0) {
+              lines.push(currentLine);
+              currentLine = char;
+            } else {
+              currentLine = testLine;
+            }
+          }
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+
+          // ボード中心（画面表示の top:60%, left:38%, width:44%, height:28% の中心領域）
+          const centerX = x + (w * 0.60);
+          const centerY = y + (h * 0.74);
+          const lineHeight = fontSize * 1.25;
+
+          // 縦方向も完全中央に揃えて描画
+          const startY = centerY - ((lines.length - 1) * lineHeight / 2);
+
           lines.forEach((line, index) => {
-            ctx.fillText(line, textX, startY + (index * lineHeight));
+            ctx.fillText(line, centerX, startY + (index * lineHeight));
           });
 
           ctx.restore();
