@@ -47,7 +47,7 @@
       display: block;
     }
 
-    /* 看板上のテキスト表示（思い切って左38%、下60%へ移動） */
+    /* 看板上のテキスト表示 */
     #sign-text-overlay {
       display: none;
       position: absolute;
@@ -182,7 +182,7 @@
 
   <div id="controls">
     <div id="text-input-container">
-      <input type="text" id="sign-input" placeholder="看板の文字を入力..." value="村椿朗読会" oninput="updateSignText()">
+      <input type="text" id="sign-input" placeholder="看板の文字を入力..." value="2026.9.19" oninput="updateSignText()">
     </div>
     <div class="char-select">
       <img src="mellow_reel_duo.png" class="active" onclick="selectChar(this, 'mellow_reel_duo.png')">
@@ -327,7 +327,6 @@
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // 写真合成時の位置（左58%、下75%）
           const textX = x + (w * 0.58);
           const textY = y + (h * 0.75);
 
@@ -353,7 +352,7 @@
           await navigator.share({
             files: [file],
             title: 'ARキャラフォト',
-            text: '#村椿朗読会 #メロウとリール'
+            text: '#フリーダムベル朗読会 #メロウとリール'
           });
         } catch (e) {}
       } else {
