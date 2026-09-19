@@ -29,18 +29,43 @@
       object-fit: cover;
     }
 
-    /* キャラ画像 */
-    #overlay-char {
+    /* キャラ画像とテキストのコンテナ */
+    #overlay-container {
       position: absolute;
       top: 30%;
       left: 20%;
-      width: 200px;
-      height: auto;
-      object-fit: contain;
+      width: 220px;
       touch-action: none;
       cursor: move;
       user-select: none;
       z-index: 2;
+    }
+    #overlay-char {
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* 看板上のテキスト表示 */
+    #sign-text-overlay {
+      display: none;
+      position: absolute;
+      /* 看板の白枠領域（位置の調整値） */
+      top: 25%;
+      left: 18%;
+      width: 64%;
+      height: 48%;
+      color: #222;
+      font-weight: bold;
+      font-size: 14px;
+      line-height: 1.3;
+      text-align: center;
+      word-break: break-all;
+      white-space: pre-wrap;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
     }
 
     /* 操作エリア */
@@ -51,16 +76,33 @@
       transform: translateX(-50%);
       width: 90%;
       max-width: 400px;
-      background: rgba(0, 0, 0, 0.65);
+      background: rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(8px);
       border-radius: 20px;
       display: flex;
       flex-direction: column;
       align-items: center;
       padding: 12px 10px;
-      gap: 10px;
+      gap: 8px;
       z-index: 10;
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+
+    /* 看板用テキスト入力欄 */
+    #text-input-container {
+      display: none;
+      width: 100%;
+    }
+    #sign-input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid #00ffcc;
+      background: rgba(255, 255, 255, 0.9);
+      color: #000;
+      font-size: 14px;
+      text-align: center;
+      outline: none;
     }
 
     /* サムネイル */
@@ -94,7 +136,7 @@
       cursor: pointer;
     }
 
-    /* 撮影後モーダル */
+    /* モーダル */
     #modal {
       display: none;
       position: fixed;
@@ -133,9 +175,15 @@
     <video id="camera" autoplay playsinline muted></video>
   </div>
 
-  <img id="overlay-char" src="mellow_reel_duo.png" alt="character">
+  <div id="overlay-container">
+    <img id="overlay-char" src="mellow_reel_duo.png" alt="character">
+    <div id="sign-text-overlay"></div>
+  </div>
 
   <div id="controls">
+    <div id="text-input-container">
+      <input type="text" id="sign-input" placeholder="看板の文字を入力..." value="村椿朗読会" oninput="updateSignText()">
+    </div>
     <div class="char-select">
       <img src="mellow_reel_duo.png" class="active" onclick="selectChar(this, 'mellow_reel_duo.png')">
       <img src="mellow_upside_down.png" onclick="selectChar(this, 'mellow_upside_down.png')">
@@ -158,12 +206,17 @@
 
   <script>
     const video = document.getElementById('camera');
+    const container = document.getElementById('overlay-container');
     const overlayChar = document.getElementById('overlay-char');
+    const signTextOverlay = document.getElementById('sign-text-overlay');
+    const textInputContainer = document.getElementById('text-input-container');
+    const signInput = document.getElementById('sign-input');
     const canvas = document.getElementById('canvas');
     const modal = document.getElementById('modal');
     const previewImg = document.getElementById('preview-img');
 
     let currentDataUrl = '';
+    let isSignSelected = false;
 
     // トランスフォーム管理（移動・拡大）
     let state = { x: 0, y: 0, scale: 1, lastX: 0, lastY: 0, initialDist: 0, initialScale: 1 };
@@ -178,18 +231,23 @@
           .then(stream => video.srcObject = stream);
       });
 
-    // 初期位置リセット
+    // 位置リセット
     function resetCharPos() {
       state.x = 0; state.y = 0; state.scale = 1;
       updateTransform();
     }
 
     function updateTransform() {
-      overlayChar.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+      container.style.transform = `translate(${state.x}px, ${state.y}px) scale(${state.scale})`;
+    }
+
+    // 看板テキストリアルタイム更新
+    function updateSignText() {
+      signTextOverlay.innerText = signInput.value;
     }
 
     // 2. タッチ操作（ドラッグ ＆ ピンチズーム）
-    overlayChar.addEventListener('touchstart', (e) => {
+    container.addEventListener('touchstart', (e) => {
       if (e.touches.length === 1) {
         state.lastX = e.touches[0].clientX - state.x;
         state.lastY = e.touches[0].clientY - state.y;
@@ -202,7 +260,7 @@
       }
     });
 
-    overlayChar.addEventListener('touchmove', (e) => {
+    container.addEventListener('touchmove', (e) => {
       e.preventDefault();
       if (e.touches.length === 1) {
         state.x = e.touches[0].clientX - state.lastX;
@@ -218,21 +276,33 @@
       }
     });
 
-    // 3. キャラ変更
+    // 3. キャラ選択
     function selectChar(el, filename) {
       document.querySelectorAll('.char-select img').forEach(img => img.classList.remove('active'));
       el.classList.add('active');
       overlayChar.src = filename;
+
+      // 看板画像の判定
+      isSignSelected = filename.includes('reel_sign.png');
+      if (isSignSelected) {
+        textInputContainer.style.display = 'block';
+        signTextOverlay.style.display = 'flex';
+        updateSignText();
+      } else {
+        textInputContainer.style.display = 'none';
+        signTextOverlay.style.display = 'none';
+      }
+
       resetCharPos();
     }
 
-    // 4. 撮影処理（アスペクト比を保持して描画）
+    // 4. 撮影処理（文字も合成）
     function takePhoto() {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
 
-      // カメラ映像を描画
+      // カメラを描画
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
       const charImg = new Image();
@@ -245,17 +315,31 @@
         const rect = overlayChar.getBoundingClientRect();
         const stageRect = stage.getBoundingClientRect();
 
-        // 描画位置
         const x = (rect.left - stageRect.left) * scaleX;
         const y = (rect.top - stageRect.top) * scaleY;
-
-        // 描画サイズ（縦横比を絶対維持）
         const w = rect.width * scaleX;
         const aspectRatio = charImg.naturalHeight / charImg.naturalWidth;
         const h = w * aspectRatio;
 
-        // キャラ描画
+        // キャラ画像を描画
         ctx.drawImage(charImg, x, y, w, h);
+
+        // 看板テキストを描画
+        if (isSignSelected && signInput.value) {
+          ctx.save();
+          const fontSize = 16 * scaleX * state.scale;
+          ctx.font = `bold ${fontSize}px sans-serif`;
+          ctx.fillStyle = '#222222';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          // 看板の中心座標（位置調整値）
+          const textX = x + (w * 0.50);
+          const textY = y + (h * 0.48);
+
+          ctx.fillText(signInput.value, textX, textY);
+          ctx.restore();
+        }
 
         currentDataUrl = canvas.toDataURL('image/png');
         previewImg.src = currentDataUrl;
