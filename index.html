@@ -28,6 +28,10 @@
       height: 100%;
       object-fit: cover;
     }
+    /* インカメラ時の鏡像反転 */
+    video.mirror {
+      transform: scaleX(-1);
+    }
 
     /* キャラコンテナ */
     #overlay-container {
@@ -47,7 +51,7 @@
       display: block;
     }
 
-    /* 看板上のテキスト表示（撮影前） */
+    /* 看板上のテキスト表示 */
     #sign-text-overlay {
       display: none;
       position: absolute;
@@ -122,17 +126,37 @@
     }
     .char-select img.active { border-color: #00ffcc; }
 
+    /* ボタン群レイアウト */
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      justify-content: center;
+    }
+
     /* 撮影ボタン */
     .btn-shutter {
-      width: 80%;
+      flex: 1;
       padding: 10px 0;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: bold;
       background: linear-gradient(45deg, #ff007f, #7f00ff);
       color: white;
       border: none;
       border-radius: 25px;
       box-shadow: 0 4px 10px rgba(255, 0, 127, 0.4);
+      cursor: pointer;
+    }
+
+    /* カメラ切替ボタン */
+    .btn-switch {
+      padding: 10px 15px;
+      font-size: 14px;
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 25px;
       cursor: pointer;
     }
 
@@ -191,7 +215,10 @@
       <img src="reel_peeking.png" onclick="selectChar(this, 'reel_peeking.png')">
       <img src="reel_sign.png" onclick="selectChar(this, 'reel_sign.png')">
     </div>
-    <button class="btn-shutter" onclick="takePhoto()">📷 写真を撮る</button>
+    <div class="btn-group">
+      <button class="btn-switch" onclick="toggleCamera()">🔄 切替</button>
+      <button class="btn-shutter" onclick="takePhoto()">📷 写真を撮る</button>
+    </div>
   </div>
 
   <div id="modal">
@@ -217,17 +244,45 @@
 
     let currentDataUrl = '';
     let isSignSelected = false;
+    let currentStream = null;
+    let useFacingMode = "environment"; // デフォルトは外カメラ
 
     let state = { x: 0, y: 0, scale: 1, lastX: 0, lastY: 0, initialDist: 0, initialScale: 1 };
 
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { exact: "environment" } },
-      audio: false
-    }).then(stream => { video.srcObject = stream; })
-      .catch(() => {
+    // 1. カメラ起動
+    function startCamera() {
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
+      navigator.mediaDevices.getUserMedia({
+        video: { facingMode: useFacingMode },
+        audio: false
+      }).then(stream => {
+        currentStream = stream;
+        video.srcObject = stream;
+        if (useFacingMode === "user") {
+          video.classList.add('mirror');
+        } else {
+          video.classList.remove('mirror');
+        }
+      }).catch(err => {
+        // exact指定なしでフォールバック
         navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-          .then(stream => video.srcObject = stream);
+          .then(stream => {
+            currentStream = stream;
+            video.srcObject = stream;
+          });
       });
+    }
+
+    startCamera();
+
+    // カメラ切り替え
+    function toggleCamera() {
+      useFacingMode = (useFacingMode === "environment") ? "user" : "environment";
+      startCamera();
+    }
 
     function resetCharPos() {
       state.x = 0; state.y = 0; state.scale = 1;
@@ -289,13 +344,21 @@
       resetCharPos();
     }
 
-    // 4. 撮影処理（撮影前の画面表示と100%一致させるCanvas描画ロジック）
+    // 4. 撮影処理
     function takePhoto() {
       const ctx = canvas.getContext('2d');
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
 
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // インカメラ時は写真描画も反転させて実物通りにする
+      if (useFacingMode === "user") {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.setTransform(1, 0, 0, 1, 0, 0); // 座標系を戻す
+      } else {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
 
       const charImg = new Image();
       charImg.src = overlayChar.src;
@@ -318,7 +381,6 @@
         if (isSignSelected && signInput.value) {
           ctx.save();
 
-          // 13pxベースでCSSと完全一致するスケール計算
           const baseFontSize = 13;
           const fontSize = baseFontSize * scaleX * state.scale;
           ctx.font = `bold ${fontSize}px sans-serif`;
@@ -326,10 +388,7 @@
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          // 看板黒枠の厳密な幅（44%）
           const maxLineWidth = w * 0.44;
-
-          // 撮影前と全く同じ1文字ごとの自動折り返し処理
           const text = signInput.value;
           let lines = [];
           let currentLine = '';
@@ -348,12 +407,10 @@
             lines.push(currentLine);
           }
 
-          // ボード中心（画面表示の top:60%, left:38%, width:44%, height:28% の中心領域）
           const centerX = x + (w * 0.60);
           const centerY = y + (h * 0.74);
           const lineHeight = fontSize * 1.25;
 
-          // 縦方向も完全中央に揃えて描画
           const startY = centerY - ((lines.length - 1) * lineHeight / 2);
 
           lines.forEach((line, index) => {
