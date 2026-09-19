@@ -7,25 +7,21 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      width: 100%;
-      height: 100dvh; /* スマホのアドレスバー変動に対応 */
+      width: 100vw;
+      height: 100dvh;
       overflow: hidden;
       background: #000;
       font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
+      position: relative;
     }
 
-    /* カメラ表示エリア */
+    /* カメラ映像（画面全体に全画面表示） */
     #stage {
-      position: relative;
-      flex: 1;
-      width: 100%;
-      overflow: hidden;
-      background: #111;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100dvh;
+      z-index: 1;
     }
     video {
       width: 100%;
@@ -33,48 +29,61 @@
       object-fit: cover;
     }
 
-    /* キャラ画像（ドラッグ＆ピンチ可能） */
+/* キャラ画像（ドラッグ＆ピンチ可能・縦横比固定） */
     #overlay-char {
       position: absolute;
+      top: 30%;
+      left: 20%;
       width: 200px;
+      height: auto; /* 縦横比を自動で維持 */
+      object-fit: contain; /* 画像の歪みを防止 */
       touch-action: none;
       cursor: move;
       user-select: none;
+      z-index: 2;
     }
 
-    /* 操作エリア */
+    /* 操作エリア（画面下部に浮かす） */
     #controls {
-      height: 130px;
-      background: #181818;
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 400px;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      border-radius: 20px;
       display: flex;
       flex-direction: column;
-      justify-content: space-around;
       align-items: center;
-      padding: 8px;
+      padding: 12px 10px;
+      gap: 10px;
       z-index: 10;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
 
     /* サムネイル */
     .char-select {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       overflow-x: auto;
       width: 100%;
       justify-content: center;
-      padding: 2px 0;
     }
     .char-select img {
-      height: 40px;
+      height: 42px;
       border: 2px solid transparent;
       border-radius: 8px;
-      background: #333;
+      background: rgba(255,255,255,0.1);
       cursor: pointer;
     }
     .char-select img.active { border-color: #00ffcc; }
 
     /* 撮影ボタン */
     .btn-shutter {
-      padding: 8px 30px;
+      width: 80%;
+      padding: 10px 0;
       font-size: 16px;
       font-weight: bold;
       background: linear-gradient(45deg, #ff007f, #7f00ff);
@@ -82,14 +91,15 @@
       border: none;
       border-radius: 25px;
       box-shadow: 0 4px 10px rgba(255, 0, 127, 0.4);
+      cursor: pointer;
     }
 
-    /* モーダル */
+    /* 撮影後モーダル */
     #modal {
       display: none;
       position: fixed;
       top: 0; left: 0;
-      width: 100%; height: 100dvh;
+      width: 100vw; height: 100dvh;
       background: rgba(0,0,0,0.9);
       z-index: 999;
       flex-direction: column;
@@ -121,8 +131,9 @@
 
   <div id="stage">
     <video id="camera" autoplay playsinline muted></video>
-    <img id="overlay-char" src="mellow_reel_duo.png" alt="character">
   </div>
+
+  <img id="overlay-char" src="mellow_reel_duo.png" alt="character">
 
   <div id="controls">
     <div class="char-select">
