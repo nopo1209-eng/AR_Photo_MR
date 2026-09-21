@@ -7,7 +7,7 @@
   
   <!-- PWA設定 -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#0b1b3d">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="ARカメラ">
@@ -19,9 +19,38 @@
       width: 100vw;
       height: 100dvh;
       overflow: hidden;
-      background: #000;
+      background: #0b1b3d;
       font-family: sans-serif;
       position: relative;
+    }
+
+    /* カメラ起動待ちのローディング */
+    #loading {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: #00ffcc;
+      font-weight: bold;
+      font-size: 16px;
+      z-index: 0;
+      gap: 12px;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(0, 255, 204, 0.2);
+      border-top: 4px solid #00ffcc;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
 
     /* カメラ映像 */
@@ -202,6 +231,11 @@
   </style>
 </head>
 <body>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <div>カメラ起動中...</div>
+  </div>
 
   <div id="stage">
     <video id="camera" autoplay playsinline muted></video>
@@ -452,7 +486,6 @@
       }
     }
 
-    // PWA Service Worker 登録処理
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');
     }
