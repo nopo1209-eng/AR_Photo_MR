@@ -80,6 +80,7 @@
       cursor: move;
       user-select: none;
       z-index: 2;
+      transform-origin: center center;
     }
     #overlay-char {
       width: 100%;
@@ -275,6 +276,7 @@
 
   <script>
     const video = document.getElementById('camera');
+    const stage = document.getElementById('stage');
     const container = document.getElementById('overlay-container');
     const overlayChar = document.getElementById('overlay-char');
     const signTextOverlay = document.getElementById('sign-text-overlay');
@@ -388,14 +390,18 @@
       const vWidth = video.videoWidth || 1280;
       const vHeight = video.videoHeight || 720;
 
-      // 画面（ステージ）の表示サイズ
-      const stage = document.getElementById('stage');
-      const stageW = stage.clientWidth;
-      const stageH = stage.clientHeight;
+      const stageRect = stage.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
 
-      // object-fit: cover のクロップ計算
+      // ステージに対するコンテナの正確な相対位置・サイズ（ピクセル）
+      const relX = containerRect.left - stageRect.left;
+      const relY = containerRect.top - stageRect.top;
+      const relW = containerRect.width;
+      const relH = containerRect.height;
+
+      // object-fit: cover に伴う映像切り抜き（クロップ）計算
       const videoRatio = vWidth / vHeight;
-      const stageRatio = stageW / stageH;
+      const stageRatio = stageRect.width / stageRect.height;
 
       let drawWidth, drawHeight, startX, startY;
 
@@ -414,6 +420,7 @@
       canvas.width = drawWidth;
       canvas.height = drawHeight;
 
+      // カメラ映像の描画（インカメラ時の反転対応）
       if (useFacingMode === "user") {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
@@ -426,29 +433,29 @@
       const charImg = new Image();
       charImg.src = overlayChar.src;
       charImg.onload = () => {
-        const scale = canvas.width / stageW;
+        // ステージ上の表示領域に対する比率でCanvas上にスケール配置
+        const scaleX = canvas.width / stageRect.width;
+        const scaleY = canvas.height / stageRect.height;
 
-        const rect = overlayChar.getBoundingClientRect();
-        const stageRect = stage.getBoundingClientRect();
+        const charX = relX * scaleX;
+        const charY = relY * scaleY;
+        const charW = relW * scaleX;
+        const charH = relH * scaleY;
 
-        const x = (rect.left - stageRect.left) * scale;
-        const y = (rect.top - stageRect.top) * scale;
-        const w = rect.width * scale;
-        const h = rect.height * scale;
+        ctx.drawImage(charImg, charX, charY, charW, charH);
 
-        ctx.drawImage(charImg, x, y, w, h);
-
+        // 看板テキスト描画
         if (isSignSelected && signInput.value) {
           ctx.save();
 
           const baseFontSize = 13;
-          const fontSize = baseFontSize * scale * state.scale;
+          const fontSize = baseFontSize * scaleX * state.scale;
           ctx.font = `bold ${fontSize}px sans-serif`;
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
-          const maxLineWidth = w * 0.44;
+          const maxLineWidth = charW * 0.44;
           const text = signInput.value;
           let lines = [];
           let currentLine = '';
@@ -467,8 +474,8 @@
             lines.push(currentLine);
           }
 
-          const centerX = x + (w * 0.60);
-          const centerY = y + (h * 0.74);
+          const centerX = charX + (charW * 0.60);
+          const centerY = charY + (charH * 0.74);
           const lineHeight = fontSize * 1.25;
 
           const startYPos = centerY - ((lines.length - 1) * lineHeight / 2);
