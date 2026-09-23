@@ -387,60 +387,63 @@
 
     function takePhoto() {
       const ctx = canvas.getContext('2d');
-      const vWidth = video.videoWidth || 1280;
-      const vHeight = video.videoHeight || 720;
+      const vW = video.videoWidth || 1280;
+      const vH = video.videoHeight || 720;
 
+      // 画面の表示サイズ
       const stageRect = stage.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
+      const sW = stageRect.width;
+      const sH = stageRect.height;
 
-      // ステージに対するコンテナの正確な相対位置・サイズ（ピクセル）
-      const relX = containerRect.left - stageRect.left;
-      const relY = containerRect.top - stageRect.top;
-      const relW = containerRect.width;
-      const relH = containerRect.height;
+      // object-fit: cover で実際に画面に映っているビデオ内の領域（crop）を計算
+      const videoRatio = vW / vH;
+      const stageRatio = sW / sH;
 
-      // object-fit: cover に伴う映像切り抜き（クロップ）計算
-      const videoRatio = vWidth / vHeight;
-      const stageRatio = stageRect.width / stageRect.height;
-
-      let drawWidth, drawHeight, startX, startY;
+      let cropX, cropY, cropW, cropH;
 
       if (stageRatio > videoRatio) {
-        drawWidth = vWidth;
-        drawHeight = vWidth / stageRatio;
-        startX = 0;
-        startY = (vHeight - drawHeight) / 2;
+        cropW = vW;
+        cropH = vW / stageRatio;
+        cropX = 0;
+        cropY = (vH - cropH) / 2;
       } else {
-        drawWidth = vHeight * stageRatio;
-        drawHeight = vHeight;
-        startX = (vWidth - drawWidth) / 2;
-        startY = 0;
+        cropW = vH * stageRatio;
+        cropH = vH;
+        cropX = (vW - cropW) / 2;
+        cropY = 0;
       }
 
-      canvas.width = drawWidth;
-      canvas.height = drawHeight;
+      // Canvasを出力解像度（高品質）に合わせる
+      canvas.width = cropW;
+      canvas.height = cropH;
 
-      // カメラ映像の描画（インカメラ時の反転対応）
+      // カメラ映像を描画
       if (useFacingMode === "user") {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(video, startX, startY, drawWidth, drawHeight, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
       } else {
-        ctx.drawImage(video, startX, startY, drawWidth, drawHeight, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
       }
 
+      // キャラクターの位置を計算
       const charImg = new Image();
       charImg.src = overlayChar.src;
       charImg.onload = () => {
-        // ステージ上の表示領域に対する比率でCanvas上にスケール配置
-        const scaleX = canvas.width / stageRect.width;
-        const scaleY = canvas.height / stageRect.height;
+        const containerRect = container.getBoundingClientRect();
 
-        const charX = relX * scaleX;
-        const charY = relY * scaleY;
-        const charW = relW * scaleX;
-        const charH = relH * scaleY;
+        // 画面全体(sW, sH)に対するコンテナの相対割合(0.0 〜 1.0)
+        const normX = (containerRect.left - stageRect.left) / sW;
+        const normY = (containerRect.top - stageRect.top) / sH;
+        const normW = containerRect.width / sW;
+        const normH = containerRect.height / sH;
+
+        // Canvas上のピクセル座標に換算
+        const charX = normX * canvas.width;
+        const charY = normY * canvas.height;
+        const charW = normW * canvas.width;
+        const charH = normH * canvas.height;
 
         ctx.drawImage(charImg, charX, charY, charW, charH);
 
@@ -448,8 +451,9 @@
         if (isSignSelected && signInput.value) {
           ctx.save();
 
+          const scaleFactor = canvas.width / sW;
           const baseFontSize = 13;
-          const fontSize = baseFontSize * scaleX * state.scale;
+          const fontSize = baseFontSize * scaleFactor * state.scale;
           ctx.font = `bold ${fontSize}px sans-serif`;
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
