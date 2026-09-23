@@ -385,33 +385,56 @@
 
     function takePhoto() {
       const ctx = canvas.getContext('2d');
-      canvas.width = video.videoWidth || 1280;
-      canvas.height = video.videoHeight || 720;
+      const vWidth = video.videoWidth || 1280;
+      const vHeight = video.videoHeight || 720;
+
+      // 画面（ステージ）の表示サイズ
+      const stage = document.getElementById('stage');
+      const stageW = stage.clientWidth;
+      const stageH = stage.clientHeight;
+
+      // object-fit: cover のクロップ計算
+      const videoRatio = vWidth / vHeight;
+      const stageRatio = stageW / stageH;
+
+      let drawWidth, drawHeight, startX, startY;
+
+      if (stageRatio > videoRatio) {
+        drawWidth = vWidth;
+        drawHeight = vWidth / stageRatio;
+        startX = 0;
+        startY = (vHeight - drawHeight) / 2;
+      } else {
+        drawWidth = vHeight * stageRatio;
+        drawHeight = vHeight;
+        startX = (vWidth - drawWidth) / 2;
+        startY = 0;
+      }
+
+      canvas.width = drawWidth;
+      canvas.height = drawHeight;
 
       if (useFacingMode === "user") {
         ctx.translate(canvas.width, 0);
         ctx.scale(-1, 1);
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, startX, startY, drawWidth, drawHeight, 0, 0, canvas.width, canvas.height);
         ctx.setTransform(1, 0, 0, 1, 0, 0);
       } else {
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(video, startX, startY, drawWidth, drawHeight, 0, 0, canvas.width, canvas.height);
       }
 
       const charImg = new Image();
       charImg.src = overlayChar.src;
       charImg.onload = () => {
-        const stage = document.getElementById('stage');
-        const scaleX = canvas.width / stage.clientWidth;
-        const scaleY = canvas.height / stage.clientHeight;
+        const scale = canvas.width / stageW;
 
         const rect = overlayChar.getBoundingClientRect();
         const stageRect = stage.getBoundingClientRect();
 
-        const x = (rect.left - stageRect.left) * scaleX;
-        const y = (rect.top - stageRect.top) * scaleY;
-        const w = rect.width * scaleX;
-        const aspectRatio = charImg.naturalHeight / charImg.naturalWidth;
-        const h = w * aspectRatio;
+        const x = (rect.left - stageRect.left) * scale;
+        const y = (rect.top - stageRect.top) * scale;
+        const w = rect.width * scale;
+        const h = rect.height * scale;
 
         ctx.drawImage(charImg, x, y, w, h);
 
@@ -419,7 +442,7 @@
           ctx.save();
 
           const baseFontSize = 13;
-          const fontSize = baseFontSize * scaleX * state.scale;
+          const fontSize = baseFontSize * scale * state.scale;
           ctx.font = `bold ${fontSize}px sans-serif`;
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
@@ -448,10 +471,10 @@
           const centerY = y + (h * 0.74);
           const lineHeight = fontSize * 1.25;
 
-          const startY = centerY - ((lines.length - 1) * lineHeight / 2);
+          const startYPos = centerY - ((lines.length - 1) * lineHeight / 2);
 
           lines.forEach((line, index) => {
-            ctx.fillText(line, centerX, startY + (index * lineHeight));
+            ctx.fillText(line, centerX, startYPos + (index * lineHeight));
           });
 
           ctx.restore();
