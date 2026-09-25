@@ -287,12 +287,12 @@
         currentStream.getTracks().forEach(track => track.stop());
       }
 
-      // カメラの入力を最高画質（Full HD/4K）で要求
+      // カメラの入力を超高画質（4K優先/最高画質）で要求
       navigator.mediaDevices.getUserMedia({
         video: { 
           facingMode: useFacingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
+          width: { ideal: 3840, min: 1920 },
+          height: { ideal: 2160, min: 1080 }
         },
         audio: false
       }).then(stream => {
@@ -384,6 +384,9 @@
       const vW = video.videoWidth || 1920;
       const vH = video.videoHeight || 1080;
 
+      // ディスプレイの解像度倍率（2倍〜3倍）を取得して倍率計算に反映
+      const dpr = Math.max(window.devicePixelRatio || 1, 2);
+
       const stageRect = stage.getBoundingClientRect();
       const sW = stageRect.width;
       const sH = stageRect.height;
@@ -405,11 +408,11 @@
         cropY = 0;
       }
 
-      // 出力Canvasを高解像度（カメラ本来の画質）に統一
-      canvas.width = cropW;
-      canvas.height = cropH;
+      // ディスプレイピクセル倍率に合わせてCanvas内部サイズを極大化
+      canvas.width = Math.max(cropW, sW * dpr);
+      canvas.height = Math.max(cropH, sH * dpr);
 
-      // 描画品質の最大化設定（スムージング処理）
+      // 高画質補間設定
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 
@@ -423,7 +426,7 @@
         ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
       }
 
-      // キャラクター画像を高精細合成
+      // キャラクター画像を描画
       const charImg = new Image();
       charImg.src = overlayChar.src;
       charImg.onload = () => {
@@ -441,7 +444,7 @@
 
         ctx.drawImage(charImg, charX, charY, charW, charH);
 
-        // 看板テキスト描画（フォント解像度もスケールアップ）
+        // 看板テキスト描画
         if (isSignSelected && signInput.value) {
           ctx.save();
 
@@ -485,7 +488,6 @@
           ctx.restore();
         }
 
-        // 最高画質PNGで書き出し
         currentDataUrl = canvas.toDataURL('image/png', 1.0);
         previewImg.src = currentDataUrl;
         modal.style.display = 'flex';
