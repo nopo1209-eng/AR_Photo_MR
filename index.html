@@ -24,7 +24,6 @@
       position: relative;
     }
 
-    /* カメラ起動待ちのローディング */
     #loading {
       position: absolute;
       top: 0; left: 0;
@@ -53,7 +52,6 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* カメラ映像 */
     #stage {
       position: absolute;
       top: 0; left: 0;
@@ -70,7 +68,6 @@
       transform: scaleX(-1);
     }
 
-    /* キャラコンテナ */
     #overlay-container {
       position: absolute;
       top: 30%;
@@ -89,7 +86,6 @@
       display: block;
     }
 
-    /* 看板上のテキスト表示 */
     #sign-text-overlay {
       display: none;
       position: absolute;
@@ -110,7 +106,6 @@
       pointer-events: none;
     }
 
-    /* 操作エリア */
     #controls {
       position: absolute;
       bottom: 20px;
@@ -130,7 +125,6 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
 
-    /* 看板用テキスト入力欄 */
     #text-input-container {
       display: none;
       width: 100%;
@@ -147,7 +141,6 @@
       outline: none;
     }
 
-    /* サムネイル */
     .char-select {
       display: flex;
       gap: 8px;
@@ -164,7 +157,6 @@
     }
     .char-select img.active { border-color: #00ffcc; }
 
-    /* ボタン群レイアウト */
     .btn-group {
       display: flex;
       gap: 10px;
@@ -172,7 +164,6 @@
       justify-content: center;
     }
 
-    /* 撮影ボタン */
     .btn-shutter {
       flex: 1;
       padding: 10px 0;
@@ -186,7 +177,6 @@
       cursor: pointer;
     }
 
-    /* カメラ切替ボタン */
     .btn-switch {
       padding: 10px 15px;
       font-size: 14px;
@@ -198,7 +188,6 @@
       cursor: pointer;
     }
 
-    /* モーダル */
     #modal {
       display: none;
       position: fixed;
@@ -298,8 +287,13 @@
         currentStream.getTracks().forEach(track => track.stop());
       }
 
+      // カメラの入力を最高画質（Full HD/4K）で要求
       navigator.mediaDevices.getUserMedia({
-        video: { facingMode: useFacingMode },
+        video: { 
+          facingMode: useFacingMode,
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
         audio: false
       }).then(stream => {
         currentStream = stream;
@@ -387,15 +381,13 @@
 
     function takePhoto() {
       const ctx = canvas.getContext('2d');
-      const vW = video.videoWidth || 1280;
-      const vH = video.videoHeight || 720;
+      const vW = video.videoWidth || 1920;
+      const vH = video.videoHeight || 1080;
 
-      // 画面の表示サイズ
       const stageRect = stage.getBoundingClientRect();
       const sW = stageRect.width;
       const sH = stageRect.height;
 
-      // object-fit: cover で実際に画面に映っているビデオ内の領域（crop）を計算
       const videoRatio = vW / vH;
       const stageRatio = sW / sH;
 
@@ -413,9 +405,13 @@
         cropY = 0;
       }
 
-      // Canvasを出力解像度（高品質）に合わせる
+      // 出力Canvasを高解像度（カメラ本来の画質）に統一
       canvas.width = cropW;
       canvas.height = cropH;
+
+      // 描画品質の最大化設定（スムージング処理）
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
 
       // カメラ映像を描画
       if (useFacingMode === "user") {
@@ -427,19 +423,17 @@
         ctx.drawImage(video, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
       }
 
-      // キャラクターの位置を計算
+      // キャラクター画像を高精細合成
       const charImg = new Image();
       charImg.src = overlayChar.src;
       charImg.onload = () => {
         const containerRect = container.getBoundingClientRect();
 
-        // 画面全体(sW, sH)に対するコンテナの相対割合(0.0 〜 1.0)
         const normX = (containerRect.left - stageRect.left) / sW;
         const normY = (containerRect.top - stageRect.top) / sH;
         const normW = containerRect.width / sW;
         const normH = containerRect.height / sH;
 
-        // Canvas上のピクセル座標に換算
         const charX = normX * canvas.width;
         const charY = normY * canvas.height;
         const charW = normW * canvas.width;
@@ -447,7 +441,7 @@
 
         ctx.drawImage(charImg, charX, charY, charW, charH);
 
-        // 看板テキスト描画
+        // 看板テキスト描画（フォント解像度もスケールアップ）
         if (isSignSelected && signInput.value) {
           ctx.save();
 
@@ -491,7 +485,8 @@
           ctx.restore();
         }
 
-        currentDataUrl = canvas.toDataURL('image/png');
+        // 最高画質PNGで書き出し
+        currentDataUrl = canvas.toDataURL('image/png', 1.0);
         previewImg.src = currentDataUrl;
         modal.style.display = 'flex';
       };
